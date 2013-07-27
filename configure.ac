@@ -4,14 +4,11 @@
 AC_PREREQ([2.61])
 AC_INIT(cuckoo-engine, 0.1, awreece@gmail.com)
 AC_CONFIG_SRCDIR([src])
-AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 PANDORA_CANONICAL_TARGET
-
-# Checks for header files.
-AC_CHECK_HEADERS([fcntl.h inttypes.h stddef.h stdlib.h string.h unistd.h])
 
 AC_CHECK_HEADERS([memcached/engine.h])
 AS_IF([test "x$ac_cv_header_memcached_engine_h" = "xno"],

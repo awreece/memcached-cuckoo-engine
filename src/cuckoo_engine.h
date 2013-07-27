@@ -1,149 +1,310 @@
 /*
- * Summary: Specification of the storage engine interface.
- *
- * Copy: See Copyright for the status of this software.
- *
- * Author: Trond Norbye <trond.norbye@sun.com>
+ * Copyright 2013 Alex Reece (awreece@gmail.com).
  */
+
 #ifndef CUCKOO_ENGINE_H
 #define CUCKOO_ENGINE_H
 
 #include "config.h"
 
-#include <pthread.h>
-#include <stdbool.h>
-
 #include <memcached/engine.h>
-#include <memcached/util.h>
-#include <memcached/visibility.h>
 
-/* Slab sizing definitions. */
-#define POWER_SMALLEST 1
-#define POWER_LARGEST  200
-#define CHUNK_ALIGN_BYTES 8
-#define DONT_PREALLOC_SLABS
-#define MAX_NUMBER_OF_SLAB_CLASSES (POWER_LARGEST + 1)
+typedef struct engine_engine_s {
+  ENGINE_HANDLE_V1 engine;
+} engine_t;
 
-/** How long an object can reasonably be assumed to be locked before
-    harvesting it on a low memory condition. */
-#define TAIL_REPAIR_TIME (3 * 3600)
-
-
-/* Forward decl */
-struct cuckoo_engine;
-
-#include "trace.h"
-#include "items.h"
-#include "assoc.h"
-#include "slabs.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-   /* Flags */
-#define ITEM_WITH_CAS 1
-
-#define ITEM_LINKED (1<<8)
-
-/* temp */
-#define ITEM_SLABBED (2<<8)
-
-struct config {
-   bool use_cas;
-   size_t verbose;
-   rel_time_t oldest_live;
-   bool evict_to_free;
-   size_t maxbytes;
-   bool preallocate;
-   float factor;
-   size_t chunk_size;
-   size_t item_size_max;
-   bool ignore_vbucket;
-   bool vb0;
-};
-
-MEMCACHED_PUBLIC_API
-ENGINE_ERROR_CODE create_instance(uint64_t interface,
-                                  GET_SERVER_API get_server_api,
-                                  ENGINE_HANDLE **handle);
+typedef struct item_s {
+  void* key;
+  size_t nkey;
+  void* data;
+  size_t ndata;
+  int flags;
+  rel_time_t exptime;
+} item_t;
 
 /**
- * Statistic information collected by the cuckoo engine
- */
-struct engine_stats {
-   pthread_mutex_t lock;
-   uint64_t evictions;
-   uint64_t reclaimed;
-   uint64_t curr_bytes;
-   uint64_t curr_items;
-   uint64_t total_items;
-};
-
-struct engine_scrubber {
-   pthread_mutex_t lock;
-   bool running;
-   uint64_t visited;
-   uint64_t cleaned;
-   time_t started;
-   time_t stopped;
-};
-
-struct tap_connections {
-    pthread_mutex_t lock;
-    size_t size;
-    const void* *clients;
-};
-
-struct vbucket_info {
-    int state : 2;
-};
-
-#define NUM_VBUCKETS 65536
-
-/**
- * Definition of the private instance data used by the cuckoo engine.
+ * Tear down this engine.
  *
- * This is currently "work in progress" so it is not as clean as it should be.
+ * @param handle the engine handle
+ * @param force the flag indicating the force shutdown or not.
  */
-struct cuckoo_engine {
-   ENGINE_HANDLE_V1 engine;
-   SERVER_HANDLE_V1 server;
-   GET_SERVER_API get_server_api;
+void engine_destroy(ENGINE_HANDLE* handle, const bool force);
 
-   /**
-    * Is the engine initalized or not
-    */
-   bool initialized;
+/**
+ * Initialize an engine instance.
+ * This is called *after* creation, but before the engine may be used.
+ *
+ * @param handle the engine handle
+ * @param config_str configuration this engine needs to initialize itself.
+ */
+ENGINE_ERROR_CODE engine_initialize(ENGINE_HANDLE* handle,
+                                    const char* config_str);
 
-   struct assoc assoc;
-   struct slabs slabs;
-   struct items items;
+/**
+ * Get a description of this engine.
+ *
+ * @param handle the engine handle
+ * @return a string description of this engine
+ */
+const engine_info* engine_get_info(ENGINE_HANDLE* handle);
 
-   /**
-    * The cache layer (item_* and assoc_*) is currently protected by
-    * this single mutex
-    */
-   pthread_mutex_t cache_lock;
+/**
+ * Allocate an item.
+ *
+ * The item can later be loaded / inserted into the cache.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param output variable that will receive the item
+ * @param key the item's key
+ * @param nkey the length of the key
+ * @param nbytes the number of bytes that will make up the
+ *        value of this item.
+ * @param flags the item's flags
+ * @param exptime the maximum lifetime of this item
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_allocate(ENGINE_HANDLE* handle,
+                                  const void* cookie,
+                                  item **item,
+                                  const void* key,
+                                  const size_t nkey,
+                                  const size_t nbytes,
+                                  const int flags,
+                                  const rel_time_t exptime);
 
-   struct config config;
-   struct engine_stats stats;
-   struct engine_scrubber scrubber;
-   struct tap_connections tap_connections;
+/**
+ * Indicate that a caller who received an item no longer needs
+ * it.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param item the item to be released
+ */
+void engine_release(ENGINE_HANDLE* handle, const void *cookie, item* item);
 
-   union {
-       engine_info engine_info;
-       char buffer[sizeof(engine_info) +
-                   (sizeof(feature_info) * LAST_REGISTERED_ENGINE_FEATURE)];
-   } info;
+/**
+ * Get information about an item.
+ *
+ * The loader of the module may need the pointers to the actual data within
+ * an item. Instead of having to create multiple functions to get each
+ * individual item, this function will get all of them.
+ *
+ * @param handle the engine that owns the object
+ * @param cookie connection cookie for this item
+ * @param item the item to request information about
+ * @param item_info
+ * @return true if successful
+ */
+bool engine_get_item_info(ENGINE_HANDLE* handle, const void* cookie,
+                          const void* item, item_info* item_info);
 
-   char vbucket_infos[NUM_VBUCKETS];
-};
+/**
+ * Store an item.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param item the item to store
+ * @param cas the CAS value for conditional sets
+ * @param operation the type of store operation to perform.
+ * @param vbucket the virtual bucket id
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_store(ENGINE_HANDLE* handle,
+                               const void* cookie,
+                               item* item,
+                               uint64_t *cas, 
+                               ENGINE_STORE_OPERATION operation,
+                               uint16_t vbucket);
 
-char* item_get_data(const hash_item* item);
-const void* item_get_key(const hash_item* item);
-void item_set_cas(ENGINE_HANDLE *handle, const void *cookie,
-                  item* item, uint64_t val);
-uint64_t item_get_cas(const hash_item* item);
-uint8_t item_get_clsid(const hash_item* item);
+/**
+ * Retrieve an item.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param item output variable that will receive the located item
+ * @param key the key to look up
+ * @param nkey the length of the key
+ * @param vbucket the virtual bucket id
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_get(ENGINE_HANDLE* handle,   
+                             const void* cookie,
+                             item** item,
+                             const void* key,
+                             const int nkey,
+                             uint16_t vbucket);
+
+/**
+ * Remove an item from the cache.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param key the key identifying the item to be removed
+ * @param nkey the length of the key
+ * @param vbucket the virtual bucket id
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_remove(ENGINE_HANDLE* handle,
+                                const void* cookie,
+                                const void* key,
+                                const size_t nkey,
+                                uint64_t cas,
+                                uint16_t vbucket);
+
+/**
+ * Flush the cache.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param when time at which the flush should take effect
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_flush(ENGINE_HANDLE* handle,
+                               const void* cookie, time_t when);
+
+/**
+ * Perform an increment or decrement operation on an item.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param key the key to look up
+ * @param nkey the length of the key
+ * @param increment if true, increment the value, else decrement
+ * @param create if true, create the item if it's missing
+ * @param delta the amount to increment or decrement.
+ * @param initial when creating, specifies the initial value
+ * @param exptime when creating, specifies the expiration time
+ * @param cas output CAS value
+ * @param result output arithmetic value
+ * @param vbucket the virtual bucket id
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_arithmetic(ENGINE_HANDLE* handle,
+                                    const void* cookie,
+                                    const void* key,
+                                    const int nkey,
+                                    const bool increment,
+                                    const bool create,
+                                    const uint64_t delta,
+                                    const uint64_t initial,
+                                    const rel_time_t exptime,
+                                    uint64_t *cas,
+                                    uint64_t *result,
+                                    uint16_t vbucket);
+
+/**
+ * Get statistics from the engine.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param stat_key optional argument to stats
+ * @param nkey the length of the stat_key
+ * @param add_stat callback to feed results to the output
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_get_stats(ENGINE_HANDLE* handle,
+                                   const void* cookie,
+                                   const char* stat_key,
+                                   int nkey,
+                                   ADD_STAT add_stat);
+
+/**
+ * Reset the stats.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ */
+void engine_reset_stats(ENGINE_HANDLE* handle, const void *cookie);
+
+/**
+ * Any unknown command will be considered engine specific.
+ *
+ * @param handle the engine handle
+ * @param cookie The cookie provided by the frontend
+ * @param request pointer to request header to be filled in
+ * @param response function to transmit data
+ *
+ * @return ENGINE_SUCCESS if all goes well
+ */
+ENGINE_ERROR_CODE engine_unknown_command(ENGINE_HANDLE* handle,
+                                         const void* cookie,
+                                         protocol_binary_request_header *request,
+                                         ADD_RESPONSE response);
+
+/**
+ * Set the CAS id on an item.
+ */
+void engine_item_set_cas(ENGINE_HANDLE *handle, const void *cookie,
+                         item* item, uint64_t val);
+
+/**
+ * Callback for all incoming TAP messages. It is up to the engine
+ * to determine what to do with the event. The core will create and send
+ * a TAP_ACK message if the flag section contains TAP_FLAG_SEND_ACK with
+ * the status byte mapped from the return code.
+ *
+ * @param handle the engine handle
+ * @param cookie identification for the tap stream
+ * @param engine_specific pointer to engine specific data (received)
+ * @param nengine_specific number of bytes of engine specific data
+ * @param ttl ttl for this item (Tap stream hops)
+ * @param tap_flags tap flags for this object
+ * @param tap_event the tap event from over the wire
+ * @param tap_seqno sequence number for this item
+ * @param key the key in the message
+ * @param nkey the number of bytes in the key
+ * @param flags the flags for the item
+ * @param exptime the expiry time for the object
+ * @param cas the cas for the item
+ * @param data the data for the item
+ * @param ndata the number of bytes in the object
+ * @param vbucket the virtual bucket for the object
+ * @return ENGINE_SUCCESS for success
+ */
+ENGINE_ERROR_CODE engine_tap_notify(ENGINE_HANDLE* handle,
+                                    const void *cookie,
+                                    void *engine_specific,
+                                    uint16_t nengine,
+                                    uint8_t ttl,
+                                    uint16_t tap_flags,
+                                    tap_event_t tap_event,
+                                    uint32_t tap_seqno,
+                                    const void *key,
+                                    size_t nkey,
+                                    uint32_t flags,
+                                    uint32_t exptime,
+                                    uint64_t cas,
+                                    const void *data,
+                                    size_t ndata,
+                                    uint16_t vbucket);
+ 
+
+/**
+ * Get (or create) a Tap iterator for this connection.
+ * @param handle the engine handle
+ * @param cookie The connection cookie
+ * @param client The "name" of the client
+ * @param nclient The number of bytes in the client name
+ * @param flags Tap connection flags
+ * @param userdata Specific userdata the engine may know how to use
+ * @param nuserdata The size of the userdata
+ * @return a tap iterator to iterate through the event stream
+ */
+TAP_ITERATOR engine_get_tap_iterator(ENGINE_HANDLE* handle,
+                                     const void* cookie,
+                                     const void* client,
+                                     size_t nclient,
+                                     uint32_t flags,
+                                     const void* userdata,
+                                     size_t nuserdata);
+
+
 #endif

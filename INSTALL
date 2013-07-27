@@ -1,0 +1,10 @@
+If I do:
+
+    autoreconf -fis && ./configure && make
+
+Then I get a `.libs/cuckoo_engine.so` that I can pass to `memcached`:
+
+     memcached -E path/to/source/dir/.libs/cuckoo_engine.so
+
+Note that if you are using developing memcached, you might want
+`.libs/memcached`.
