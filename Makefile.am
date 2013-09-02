@@ -22,6 +22,7 @@ pretty: $(SOURCES)
 	@indent \
 	  -T item_t \
 	  -T engine_t \
+	  -T ENGINE_HANDLE \
 	  --no-tabs \
 	  --indent-level2 \
 	  --continue-at-parentheses \
