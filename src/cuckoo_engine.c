@@ -22,10 +22,9 @@ ENGINE_ERROR_CODE engine_initialize(ENGINE_HANDLE* handle,
   return ENGINE_SUCCESS;
 }
 
-const engine_info* engine_get_info(ENGINE_HANDLE* handle)
-{
+const engine_info* engine_get_info(ENGINE_HANDLE* handle) {
   static engine_info info = {
-    .description = "Cuckoo engine v0.1",
+    .description = "Cuckoo engine v" PACKAGE_VERSION,
     .num_features = 0
   };
 
@@ -88,7 +87,6 @@ ENGINE_ERROR_CODE create_instance(uint64_t interface,
       .aggregate_stats = engine_aggregate_stats,
       .errinfo = engine_errinfo
       */
-
     },
   };
 
