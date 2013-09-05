@@ -12,17 +12,17 @@
 #include <memcached/engine.h>
 
 typedef struct engine_engine_s {
-  ENGINE_HANDLE_V1 engine;
-  cuckoo_hashtable_t *ht;
+    ENGINE_HANDLE_V1 engine;
+    cuckoo_hashtable_t *ht;
 } engine_t;
 
 typedef struct item_s {
-  void* key;
-  size_t nkey;
-  void* data;
-  size_t ndata;
-  int flags;
-  rel_time_t exptime;
+    void* key;
+    size_t nkey;
+    void* data;
+    size_t ndata;
+    int flags;
+    rel_time_t exptime;
 } item_t;
 
 static inline engine_t* get_handle(ENGINE_HANDLE* handle); 
@@ -43,7 +43,7 @@ void engine_destroy(ENGINE_HANDLE* handle, const bool force);
  * @param config_str configuration this engine needs to initialize itself.
  */
 ENGINE_ERROR_CODE engine_initialize(ENGINE_HANDLE* handle,
-                                    const char* config_str);
+    const char* config_str);
 
 /**
  * Get a description of this engine.
@@ -71,13 +71,13 @@ const engine_info* engine_get_info(ENGINE_HANDLE* handle);
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_allocate(ENGINE_HANDLE* handle,
-                                  const void* cookie,
-                                  item **item,
-                                  const void* key,
-                                  const size_t nkey,
-                                  const size_t nbytes,
-                                  const int flags,
-                                  const rel_time_t exptime);
+        const void* cookie,
+        item **item,
+        const void* key,
+        const size_t nkey,
+        const size_t nbytes,
+        const int flags,
+        const rel_time_t exptime);
 
 /**
  * Indicate that a caller who received an item no longer needs
@@ -103,7 +103,7 @@ void engine_release(ENGINE_HANDLE* handle, const void *cookie, item* item);
  * @return true if successful
  */
 bool engine_get_item_info(ENGINE_HANDLE* handle, const void* cookie,
-                          const void* item, item_info* item_info);
+    const void* item, item_info* item_info);
 
 /**
  * Store an item.
@@ -118,11 +118,11 @@ bool engine_get_item_info(ENGINE_HANDLE* handle, const void* cookie,
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_store(ENGINE_HANDLE* handle,
-                               const void* cookie,
-                               item* item,
-                               uint64_t *cas, 
-                               ENGINE_STORE_OPERATION operation,
-                               uint16_t vbucket);
+    const void* cookie,
+    item* item,
+    uint64_t *cas, 
+    ENGINE_STORE_OPERATION operation,
+    uint16_t vbucket);
 
 /**
  * Retrieve an item.
@@ -137,11 +137,11 @@ ENGINE_ERROR_CODE engine_store(ENGINE_HANDLE* handle,
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_get(ENGINE_HANDLE* handle,   
-                             const void* cookie,
-                             item** item,
-                             const void* key,
-                             const int nkey,
-                             uint16_t vbucket);
+    const void* cookie,
+    item** item,
+    const void* key,
+    const int nkey,
+    uint16_t vbucket);
 
 /**
  * Remove an item from the cache.
@@ -155,11 +155,11 @@ ENGINE_ERROR_CODE engine_get(ENGINE_HANDLE* handle,
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_remove(ENGINE_HANDLE* handle,
-                                const void* cookie,
-                                const void* key,
-                                const size_t nkey,
-                                uint64_t cas,
-                                uint16_t vbucket);
+    const void* cookie,
+    const void* key,
+    const size_t nkey,
+    uint64_t cas,
+    uint16_t vbucket);
 
 /**
  * Flush the cache.
@@ -171,7 +171,7 @@ ENGINE_ERROR_CODE engine_remove(ENGINE_HANDLE* handle,
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_flush(ENGINE_HANDLE* handle,
-                               const void* cookie, time_t when);
+    const void* cookie, time_t when);
 
 /**
  * Perform an increment or decrement operation on an item.
@@ -192,17 +192,17 @@ ENGINE_ERROR_CODE engine_flush(ENGINE_HANDLE* handle,
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_arithmetic(ENGINE_HANDLE* handle,
-                                    const void* cookie,
-                                    const void* key,
-                                    const int nkey,
-                                    const bool increment,
-                                    const bool create,
-                                    const uint64_t delta,
-                                    const uint64_t initial,
-                                    const rel_time_t exptime,
-                                    uint64_t *cas,
-                                    uint64_t *result,
-                                    uint16_t vbucket);
+    const void* cookie,
+    const void* key,
+    const int nkey,
+    const bool increment,
+    const bool create,
+    const uint64_t delta,
+    const uint64_t initial,
+    const rel_time_t exptime,
+    uint64_t *cas,
+    uint64_t *result,
+    uint16_t vbucket);
 
 /**
  * Get statistics from the engine.
@@ -216,10 +216,10 @@ ENGINE_ERROR_CODE engine_arithmetic(ENGINE_HANDLE* handle,
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_get_stats(ENGINE_HANDLE* handle,
-                                   const void* cookie,
-                                   const char* stat_key,
-                                   int nkey,
-                                   ADD_STAT add_stat);
+    const void* cookie,
+    const char* stat_key,
+    int nkey,
+    ADD_STAT add_stat);
 
 /**
  * Reset the stats.
@@ -240,15 +240,15 @@ void engine_reset_stats(ENGINE_HANDLE* handle, const void *cookie);
  * @return ENGINE_SUCCESS if all goes well
  */
 ENGINE_ERROR_CODE engine_unknown_command(ENGINE_HANDLE* handle,
-                                         const void* cookie,
-                                         protocol_binary_request_header *request,
-                                         ADD_RESPONSE response);
+    const void* cookie,
+    protocol_binary_request_header *request,
+    ADD_RESPONSE response);
 
 /**
  * Set the CAS id on an item.
  */
 void engine_item_set_cas(ENGINE_HANDLE *handle, const void *cookie,
-                         item* item, uint64_t val);
+    item* item, uint64_t val);
 
 /**
  * Callback for all incoming TAP messages. It is up to the engine
@@ -275,22 +275,22 @@ void engine_item_set_cas(ENGINE_HANDLE *handle, const void *cookie,
  * @return ENGINE_SUCCESS for success
  */
 ENGINE_ERROR_CODE engine_tap_notify(ENGINE_HANDLE* handle,
-                                    const void *cookie,
-                                    void *engine_specific,
-                                    uint16_t nengine,
-                                    uint8_t ttl,
-                                    uint16_t tap_flags,
-                                    tap_event_t tap_event,
-                                    uint32_t tap_seqno,
-                                    const void *key,
-                                    size_t nkey,
-                                    uint32_t flags,
-                                    uint32_t exptime,
-                                    uint64_t cas,
-                                    const void *data,
-                                    size_t ndata,
-                                    uint16_t vbucket);
- 
+    const void *cookie,
+    void *engine_specific,
+    uint16_t nengine,
+    uint8_t ttl,
+    uint16_t tap_flags,
+    tap_event_t tap_event,
+    uint32_t tap_seqno,
+    const void *key,
+    size_t nkey,
+    uint32_t flags,
+    uint32_t exptime,
+    uint64_t cas,
+    const void *data,
+    size_t ndata,
+    uint16_t vbucket);
+
 
 /**
  * Get (or create) a Tap iterator for this connection.
@@ -304,12 +304,12 @@ ENGINE_ERROR_CODE engine_tap_notify(ENGINE_HANDLE* handle,
  * @return a tap iterator to iterate through the event stream
  */
 TAP_ITERATOR engine_get_tap_iterator(ENGINE_HANDLE* handle,
-                                     const void* cookie,
-                                     const void* client,
-                                     size_t nclient,
-                                     uint32_t flags,
-                                     const void* userdata,
-                                     size_t nuserdata);
+    const void* cookie,
+    const void* client,
+    size_t nclient,
+    uint32_t flags,
+    const void* userdata,
+    size_t nuserdata);
 
 
 #endif
