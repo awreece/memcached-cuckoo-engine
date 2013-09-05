@@ -4,13 +4,16 @@
 
 #ifndef CUCKOO_ENGINE_H
 #define CUCKOO_ENGINE_H
+// minimum log of hash table 
+#define MIN_LOG 5
 
 #include "config.h"
-
+#include "libcuckoo/cuckoohash.h"
 #include <memcached/engine.h>
 
 typedef struct engine_engine_s {
   ENGINE_HANDLE_V1 engine;
+  cuckoo_hashtable_t *ht;
 } engine_t;
 
 typedef struct item_s {
@@ -21,6 +24,8 @@ typedef struct item_s {
   int flags;
   rel_time_t exptime;
 } item_t;
+
+static inline engine_t* get_handle(ENGINE_HANDLE* handle); 
 
 /**
  * Tear down this engine.
