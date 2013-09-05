@@ -5,7 +5,7 @@
 #ifndef CUCKOO_ENGINE_H
 #define CUCKOO_ENGINE_H
 // minimum log of hash table 
-#define MIN_LOG 5
+#define MIN_LOG 8
 
 #include "config.h"
 #include "libcuckoo/cuckoohash.h"
