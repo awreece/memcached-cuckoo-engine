@@ -70,7 +70,6 @@ typedef struct {
 } cuckoo_hashtable_t;
 
 
-
 /** 
  * @brief Initialize the hash table
  * 
